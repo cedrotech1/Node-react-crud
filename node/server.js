@@ -28,23 +28,40 @@ connection.connect((err) => {
 
 // Create a student
 app.post('/students', (req, res) => {
-  const { names, address} = req.body;
+  const { names, address } = req.body;
 
   // Check if names, address, or age is null
   if (!names || !address) {
     return res.status(400).json({ message: 'Please fill all fields: names, address, and age' });
   }
 
-  const student = { names, address };
-  connection.query('INSERT INTO student SET ?', student, (error, results, fields) => {
+  // Check if the name already exists in the database
+  connection.query('SELECT * FROM student WHERE names = ?', [names], (error, results, fields) => {
     if (error) {
-      console.error('Error creating student: ' + error.stack);
+      console.error('Error checking student existence: ' + error.stack);
       res.status(500).send('Internal Server Error');
       return;
     }
-    res.status(201).json({ message: 'Student created successfully', data: student });
+    
+    // If a student with the same name exists, return an error
+    if (results.length > 0) {
+      console.log('Student with the same name already exists')
+      return res.status(409).json({ message: 'Student with the same name already exists' });
+    }
+
+    // If the name doesn't exist, insert the new student record
+    const student = { names, address };
+    connection.query('INSERT INTO student SET ?', student, (error, results, fields) => {
+      if (error) {
+        console.error('Error creating student: ' + error.stack);
+        res.status(500).send('Internal Server Error');
+        return;
+      }
+      res.status(201).json({ message: 'Student created successfully', data: student });
+    });
   });
 });
+
 
 
 // Get all students
